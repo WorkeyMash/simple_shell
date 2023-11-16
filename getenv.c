@@ -1,45 +1,93 @@
-#include "function.h"
-#include "shelldata.h"
+#include "shell.h"
+
 /**
- * getEnv - This function will help you get an envir...
- * onment variable
- *
- * @variable: the environment variable to get
- *
- * Return: If (successful) {printf(name of var)} else
- * {return (NULL)}
- **/
-char *getEnv(const char *variable)
+ * get_environ - returns the string array copy of our environ
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ * Return: Always 0
+ */
+char **get_environ(info_t *info)
 {
-	char **enviro, *aux, *tok, *owo;
-	int siz;
-
-	siz = _strlen((char *) variable);
-
-	for (enviro = environ; *enviro; ++enviro)
+	if (!info->environ || info->env_changed)
 	{
-		aux = _strdup(*enviro);
+		info->environ = list_to_strings(info->env);
+		info->env_changed = 0;
+	}
 
-		tok = strtok(aux, "=");
-		if (tok == NULL)
-		{
-			free(aux);
-			return (NULL);
-		}
+	return (info->environ);
+}
 
-		if (_strlen(tok) != siz)
+/**
+ * _unsetenv - Remove an environment variable
+ * @info: Structure containing potential arguments. Used to maintain
+ *        constant function prototype.
+ *  Return: 1 on delete, 0 otherwise
+ * @var: the string env var property
+ */
+int _unsetenv(info_t *info, char *var)
+{
+	list_t *node = info->env;
+	size_t i = 0;
+	char *p;
+
+	if (!node || !var)
+		return (0);
+
+	while (node)
+	{
+		p = starts_with(node->str, var);
+		if (p && *p == '=')
 		{
-			free(aux);
+			info->env_changed = delete_node_at_index(&(info->env), i);
+			i = 0;
+			node = info->env;
 			continue;
 		}
-		if (_strcmp((char *) variable, aux) == 0)
-		{
-			tok = strtok(NULL, "=");
-			owo = _strdup(tok);
-			free(aux);
-			return (owo);
-		}
-		free(aux);
+		node = node->next;
+		i++;
 	}
-	return (NULL);
+	return (info->env_changed);
+}
+
+/**
+ * _setenv - Initialize a new environment variable,
+ *             or modify an existing one
+ * @info: Structure containing potential arguments. Used to maintain
+ *        constant function prototype.
+ * @var: the string env var property
+ * @value: the string env var value
+ *  Return: Always 0
+ */
+int _setenv(info_t *info, char *var, char *value)
+{
+	char *buf = NULL;
+	list_t *node;
+	char *p;
+
+	if (!var || !value)
+		return (0);
+
+	buf = malloc(_strlen(var) + _strlen(value) + 2);
+	if (!buf)
+		return (1);
+	_strcpy(buf, var);
+	_strcat(buf, "=");
+	_strcat(buf, value);
+	node = info->env;
+	while (node)
+	{
+		p = starts_with(node->str, var);
+		if (p && *p == '=')
+		{
+			free(node->str);
+			node->str = buf;
+			info->env_changed = 1;
+			return (0);
+		}
+		node = node->next;
+	}
+	add_node_end(&(info->env), buf, 0);
+	free(buf);
+	info->env_changed = 1;
+	return (0);
 }
